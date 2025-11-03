@@ -47,8 +47,8 @@ Ideal for **VDP researchers, penetration testers, and network analysts**, this t
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/nmap-xml-visualizer.git
-cd nmap-xml-visualizer
+git clone https://github.com/sumanrox/sumanrox.github.io
+cd sumanrox.github.io
 ```
 
 ### 2️⃣ Launch Locally with any browser
