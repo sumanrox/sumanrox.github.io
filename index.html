@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nmap XML Analyzer</title>
+
+  <!-- IBM Carbon CSS (stable CDN) -->
+  <link rel="stylesheet" href="https://unpkg.com/carbon-components/css/carbon-components.min.css">
+
+  <style>
+    /* Carbon dark tokens (conservative, production-ready) */
+    :root{
+      --bg:#161616; /* g100 */
+      --layer:#262626; /* g90 */
+      --layer-2:#1f1f1f; /* g100 alt */
+      --text-01:#f4f4f4;
+      --text-02:#c6c6c6;
+      --interactive:#0f62fe; /* blue 60 per Carbon */
+      --accent:#f1c21b; /* subtle warm accent for highlights (optional) */
+      --border: rgba(255,255,255,0.06);
+      font-family: 'IBM Plex Sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size:14px;
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text-01)}
+    .container{max-width:1200px;margin:18px auto;padding:12px}
+
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--layer);border:1px solid var(--border)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;background:linear-gradient(135deg,var(--interactive),#0043ce);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    h1{margin:0;font-size:18px}
+    .subtitle{color:var(--text-02);font-size:13px}
+
+    .controls{display:flex;gap:8px;align-items:center}
+    .bx--btn{border-radius:0}
+    input[type=file]{display:none}
+    label.file-btn{cursor:pointer}
+
+    /* Layout: left summary small, right inventory larger */
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:12px;margin-top:12px}
+
+    .panel{background:var(--layer);border:1px solid var(--border);padding:12px}
+    .panel h3{margin:0 0 8px 0}
+
+    /* lists */
+    .list-group{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto;padding-right:6px}
+    .list-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid transparent;background:transparent;cursor:pointer}
+    .list-item:hover{background:var(--layer-2)}
+    .list-item.active{outline:2px solid rgba(15,98,254,0.14);background:linear-gradient(90deg, rgba(15,98,254,0.04), transparent)}
+
+    .port-badge{background:var(--interactive);color:white;padding:4px 8px;font-weight:700;border-radius:0}
+    .svc-pill{background:rgba(15,98,254,0.08);color:var(--interactive);padding:4px 8px;border-radius:0;font-size:13px}
+
+    /* IP inventory (accordion) — modern flat Carbon style */
+    #ipAccordion{max-height:78vh;overflow:auto}
+    .accordion-item{border-bottom:1px solid var(--border);background:transparent}
+    .accordion-header{background:transparent}
+    .accordion-button{background:transparent;border:none;color:var(--text-01);text-align:left;width:100%;padding:12px;display:flex;justify-content:space-between;align-items:center}
+    .accordion-button:hover{background:var(--layer-2)}
+    .accordion-button[aria-expanded="true"]{background:linear-gradient(90deg, rgba(15,98,254,0.04), transparent)}
+  /* Accordion body: animate height for smooth open/close */
+  .accordion-body{background:var(--layer-2);padding:0 12px;color:var(--text-02);overflow:hidden;max-height:0;transition:max-height 280ms cubic-bezier(.2,.9,.3,1);}
+  .accordion-body .body-inner{padding:12px 0}
+
+  .data-table{width:100%;border-collapse:collapse}
+  /* Left align everything in the table and use muted header color */
+  .data-table th,.data-table td{padding:10px 8px;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px;color:var(--text-02);text-align:left;vertical-align:middle}
+  .data-table thead th{color:#8d8d8d;background:rgba(255,255,255,0.02);font-weight:600;text-transform:uppercase;font-size:12px;letter-spacing:0.32px}
+  .data-table td .port-badge{margin-right:10px;display:inline-block}
+
+  /* Accordion actions (right side) */
+  .accordion-header{display:flex;align-items:center;justify-content:space-between;padding:0}
+  .accordion-left{display:flex;align-items:center;gap:12px;flex:1}
+  .accordion-right{display:flex;align-items:center;gap:8px}
+  
+  /* Make Copy and View buttons EXACTLY the same size, no rounded edges */
+  .accordion-actions .btn-ghost,
+  .accordion-actions .bx--btn{
+    padding:8px 12px;
+    font-size:13px;
+    border-radius:0;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text-01);
+    min-width:90px;
+    text-align:center;
+    cursor:pointer;
+    transition:background 120ms ease;
+  }
+  .accordion-actions .btn-ghost:hover,
+  .accordion-actions .bx--btn:hover{
+    background:var(--layer-2);
+  }
+
+  /* Slightly more breathing room between ports entries in lists */
+  .list-item{padding:10px}
+
+  /* Custom sleeker scrollbar - no rounded edges */
+  /* WebKit */
+  ::-webkit-scrollbar{height:10px;width:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255, 255, 255, 0.03));border-radius:0;border:2px solid rgba(0,0,0,0)}
+  ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(0, 60, 255, 0.09),rgba(0, 4, 255, 0.04))}
+  /* Firefox */
+  *{scrollbar-width:thin;scrollbar-color: rgba(255, 255, 255, 0.06) transparent}
+
+    /* Controls and search */
+    .search{margin-top:8px}
+    .search input{width:100%;padding:8px;border:1px solid var(--border);background:var(--layer-2);color:var(--text-01);border-radius:0}
+    .search input:focus{outline:2px solid rgba(15,98,254,0.12);border-radius:0}
+
+    /* Chart */
+    .chart-card{background:var(--layer-2);border:1px solid var(--border);padding:10px;margin-top:10px;}
+
+    /* Buttons */
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-01);padding:6px 10px;border-radius:0;cursor:pointer}
+    .btn-ghost:hover{background:var(--layer-2)}
+
+    /* Small utilities */
+    .small-muted{color:var(--text-02);font-size:13px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace}
+
+    /* Responsive */
+    @media (max-width:980px){.grid{grid-template-columns:1fr;}.chart-card{margin-top:12px}}
+
+    /* === Layout Width Adjustments === */
+main {
+  padding: 1rem 3rem !important; /* slightly more breathing space */
+  gap: 2rem !important;
+}
+
+/* Make the right (IP Inventory) panel slightly wider */
+#ip-inventory-panel {
+  flex: 0.7 !important;
+}
+
+/* Make the left (Summary/Dashboard) panel smaller */
+#dashboard-panel {
+  flex: 0.3 !important;
+}
+
+/* Expand charts and stats to fit new proportions */
+#dashboard-panel canvas {
+  width: 100% !important;
+}
+
+/* Optional: Adjust header spacing for wide view */
+header {
+  padding: 1rem 3rem !important;
+}
+
+/* === Modal for View Raw === */
+.modal-overlay{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background:rgba(0,0,0,0.75);
+  z-index:9999;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter:blur(2px);
+}
+.modal-overlay.active{display:flex}
+.modal-content{
+  background:var(--layer);
+  border:1px solid var(--border);
+  max-width:90vw;
+  max-height:90vh;
+  width:900px;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 12px 48px rgba(0,0,0,0.6);
+  border-radius:0;
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:16px 20px;
+  border-bottom:1px solid var(--border);
+  background:var(--layer-2);
+}
+.modal-header h2{margin:0;font-size:16px;color:var(--text-01)}
+.modal-close{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-01);
+  padding:6px 12px;
+  cursor:pointer;
+  border-radius:0;
+  font-size:13px;
+}
+.modal-close:hover{background:var(--layer)}
+.modal-body{
+  flex:1;
+  overflow:auto;
+  padding:20px;
+  background:var(--bg);
+}
+.modal-body pre{
+  margin:0;
+  padding:16px;
+  background:var(--layer-2);
+  border:1px solid var(--border);
+  border-radius:0;
+  overflow:auto;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+  font-size:13px;
+  line-height:1.6;
+  color:var(--text-01);
+}
+.modal-body pre code{
+  display:block;
+  white-space:pre;
+}
+/* Simple syntax highlighting for XML */
+.xml-tag{color:#78a9ff}
+.xml-attr{color:#42be65}
+.xml-value{color:#ee5396}
+.xml-comment{color:#8d8d8d;font-style:italic}
+
+a {
+    color: white;
+    text-decoration: none;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand" style="padding: 1em;">
+        <div class="logo">N</div>
+        <div>
+          <h1>Nmap XML Analyzer / Visualizer</h1>
+          <div class="subtitle">Made with Love ❤️ - Designed by Suman Roy</div>
+          <div class="subtitle" style="margin-top: 5px; font-weight: bold;  padding-top: 5px;display: flex; justify-content: flex-start; gap: 10px;">
+            <a href="https://www.linkedin.com/in/sumanrox">LinkedIn</a>
+            <a href="https://github.com/sumanrox">GitHub</a>
+            <a href="https://linktr.ee/sumanroy.official">Portfolio</a>
+        </div>
+        </div>
+      </div>
+
+      <div class="controls" role="region" aria-label="controls">
+        <button id="loadExample" class="bx--btn bx--btn--secondary">Load Example</button>
+        <button id="exportJson" class="bx--btn bx--btn--secondary">Export JSON</button>
+        <label for="file" class="bx--btn bx--btn--tertiary file-btn">Choose File</label>
+        <input id="file" type="file" accept="application/xml,text/xml" />
+        <button id="exportCsv" class="bx--btn bx--btn--ghost">Export CSV</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Summary & controls (smaller) -->
+      <section class="panel" id="dashboard-panel">
+        <h3>Summary</h3>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1;padding:8px;background:var(--layer-2);border:1px solid var(--border)">
+            <div class="small-muted">Hosts</div>
+            <div id="statHosts" style="font-size:20px;font-weight:700">0</div>
+          </div>
+          <div style="flex:1;padding:8px;background:var(--layer-2);border:1px solid var(--border)">
+            <div class="small-muted">Unique ports</div>
+            <div id="statUniquePorts" style="font-size:20px;font-weight:700">0</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1;padding:8px;background:var(--layer-2);border:1px solid var(--border)">
+            <div class="small-muted">Unique services</div>
+            <div id="statServices" style="font-size:20px;font-weight:700">0</div>
+          </div>
+          <div style="flex:1;padding:8px;background:var(--layer-2);border:1px solid var(--border)">
+            <div class="small-muted">Open ports (count)</div>
+            <div id="statOpenPorts" style="font-size:20px;font-weight:700">0</div>
+          </div>
+        </div>
+
+        <div class="search" style="margin-top:12px">
+          <input id="searchInput" placeholder="search ip / hostname / service" aria-label="search" />
+        </div>
+
+        <h3 style="margin-top:12px">Ports</h3>
+        <div id="portsList" class="list-group"></div>
+
+        <h3 style="margin-top:12px" class="small-muted">Top services</h3>
+        <div id="servicesList" class="list-group" style="max-height:16vh;overflow:auto;margin-top:6px"></div>
+
+        <div class="chart-card">
+          <canvas id="portsChart" height="140"></canvas>
+        </div>
+      </section>
+
+      <!-- Right: IP Inventory (larger) -->
+      <aside class="panel" id="ip-inventory-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 style="margin:0">IP Inventory</h3>
+            <div class="small-muted">Click an IP to expand — versions shown</div>
+          </div>
+          <div>
+            <button id="copyIPs" class="btn-ghost">Copy IPs</button>
+          </div>
+        </div>
+
+        <div id="ipAccordion" class="accordion" style="margin-top:12px"></div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal for viewing raw XML -->
+  <div id="rawModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Raw XML</h2>
+        <button id="modalClose" class="modal-close">Close</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modalXml"><code></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script>
+  /* Production JS: robust parsing, edge-case handling, and UI wiring */
+  (function(){
+    'use strict';
+
+    // Data model
+    let DATA = {ips:{}, ports:{}, services:{}, hostCount:0};
+    let ACTIVE_FILTER = {type:null, key:null};
+    let portsChart = null;
+
+    // Elements
+    const fileEl = document.getElementById('file');
+    const loadExample = document.getElementById('loadExample');
+    const exportJson = document.getElementById('exportJson');
+    const exportCsv = document.getElementById('exportCsv');
+    const portsListEl = document.getElementById('portsList');
+    const servicesListEl = document.getElementById('servicesList');
+    const ipAccordion = document.getElementById('ipAccordion');
+    const searchInput = document.getElementById('searchInput');
+    const statHosts = document.getElementById('statHosts');
+    const statUniquePorts = document.getElementById('statUniquePorts');
+    const statServices = document.getElementById('statServices');
+    const statOpenPorts = document.getElementById('statOpenPorts');
+    const copyIPs = document.getElementById('copyIPs');
+
+    // Modal elements
+    const rawModal = document.getElementById('rawModal');
+    const modalClose = document.getElementById('modalClose');
+    const modalXml = document.getElementById('modalXml');
+    const modalTitle = document.getElementById('modalTitle');
+
+    // Helpers
+    const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+
+    // Modal helpers
+    function openModal(ip, xmlContent){
+      modalTitle.textContent = `Raw XML — ${ip}`;
+      const highlighted = syntaxHighlightXml(xmlContent);
+      modalXml.querySelector('code').innerHTML = highlighted;
+      rawModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(){
+      rawModal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function syntaxHighlightXml(xml){
+      // Simple XML syntax highlighting
+      return xml
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/(&lt;\/?[\w:]+)([\s>])/g, '<span class="xml-tag">$1</span>$2')
+        .replace(/([\w:]+)=/g, '<span class="xml-attr">$1</span>=')
+        .replace(/="([^"]*)"/g, '=<span class="xml-value">"$1"</span>')
+        .replace(/(&lt;!--.*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+    }
+
+    // Wire up modal close
+    modalClose.addEventListener('click', closeModal);
+    rawModal.addEventListener('click', (e)=> { if(e.target === rawModal) closeModal(); });
+    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape' && rawModal.classList.contains('active')) closeModal(); });
+
+
+    function reset(){ DATA={ips:{},ports:{},services:{},hostCount:0}; ACTIVE_FILTER={type:null,key:null}; if(portsChart){ portsChart.destroy(); portsChart=null; } portsListEl.innerHTML=''; servicesListEl.innerHTML=''; ipAccordion.innerHTML=''; statHosts.textContent='0'; statUniquePorts.textContent='0'; statServices.textContent='0'; statOpenPorts.textContent='0'; }
+
+    function parseNmapXml(xmlText){
+      reset();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlText, 'application/xml');
+      const hostEls = Array.from(doc.querySelectorAll('host'));
+
+      const seen = new Set();
+      hostEls.forEach((h, idx) => {
+        // determine IP (prefer ipv4)
+        const addrEls = Array.from(h.querySelectorAll('address'));
+        if(addrEls.length===0) return;
+        const ipElV4 = addrEls.find(a=> a.getAttribute('addrtype') === 'ipv4');
+        const ip = (ipElV4 && ipElV4.getAttribute('addr')) || addrEls[0].getAttribute('addr');
+        if(!ip || seen.has(ip)) return; seen.add(ip);
+
+        DATA.hostCount += 1;
+        const hostnames = Array.from(h.querySelectorAll('hostnames > hostname')).map(n => n.getAttribute('name')).filter(Boolean);
+
+        const portEls = Array.from(h.querySelectorAll('port'));
+        const ipEntry = {ip, hostnames, raw: h.outerHTML, ports: []};
+
+        portEls.forEach(p => {
+          const proto = p.getAttribute('protocol') || 'tcp';
+          const port = p.getAttribute('portid');
+          const state = p.querySelector('state')?.getAttribute('state') || 'unknown';
+          const svcEl = p.querySelector('service');
+          const svc = svcEl?.getAttribute('name') || '(unknown)';
+          const product = svcEl?.getAttribute('product') || '';
+          const version = svcEl?.getAttribute('version') || '';
+
+          const svcFull = [svc, product, version].filter(Boolean).join(' | ');
+          const svcKey = svcFull || svc;
+          const portKey = `${port}/${proto}`;
+
+          ipEntry.ports.push({port, proto, state, svc, product, version, svcKey, portKey});
+
+          // global port stats
+          if(!DATA.ports[portKey]) DATA.ports[portKey] = {portKey, port, proto, total:0, open:0, ips: new Set(), services: {}};
+          DATA.ports[portKey].total += 1;
+          if(state === 'open') DATA.ports[portKey].open += 1;
+          DATA.ports[portKey].ips.add(ip);
+
+          if(!DATA.ports[portKey].services[svcKey]) DATA.ports[portKey].services[svcKey] = {count:0, ips: new Set()};
+          DATA.ports[portKey].services[svcKey].count += 1;
+          DATA.ports[portKey].services[svcKey].ips.add(ip);
+
+          // global services
+          if(!DATA.services[svcKey]) DATA.services[svcKey] = {name: svcKey, count:0, ports: new Set()};
+          DATA.services[svcKey].count += 1;
+          DATA.services[svcKey].ports.add(portKey);
+        });
+
+        DATA.ips[ip] = ipEntry;
+      });
+
+      // finalize sets to arrays
+      Object.values(DATA.ports).forEach(p => { p.ipList = Array.from(p.ips); delete p.ips; Object.keys(p.services).forEach(k => p.services[k].ips = Array.from(p.services[k].ips)); });
+      Object.values(DATA.services).forEach(s => s.ports = Array.from(s.ports));
+
+      renderAll();
+    }
+
+    function renderAll(){ renderSummary(); renderPorts(); renderServices(); renderIPs(); renderChart(); }
+
+    function renderSummary(){ statHosts.textContent = DATA.hostCount; statUniquePorts.textContent = Object.keys(DATA.ports).length; statServices.textContent = Object.keys(DATA.services).length; statOpenPorts.textContent = Object.values(DATA.ports).reduce((a,b)=> a + (b.open||0), 0); }
+
+    function renderPorts(){ portsListEl.innerHTML = ''; const arr = Object.values(DATA.ports).sort((a,b)=> b.open - a.open || b.total - a.total || parseInt(a.port) - parseInt(b.port));
+      arr.forEach(p => {
+        const el = document.createElement('div'); el.className = 'list-item';
+        el.innerHTML = `<div><span class='port-badge' title='${p.portKey}'>${p.portKey}</span> <span class='small-muted' style='margin-left:8px'>open:${p.open} total:${p.total}</span></div><div class='mono small-muted'>${p.ipList.length}</div>`;
+        el.addEventListener('click', ()=> toggleFilter('port', p.portKey, el));
+        portsListEl.appendChild(el);
+      }); }
+
+    function renderServices(){ servicesListEl.innerHTML = ''; const arr = Object.values(DATA.services).sort((a,b)=> b.count - a.count).slice(0,200);
+      arr.forEach(s => {
+        const el = document.createElement('div'); el.className = 'list-item';
+        el.innerHTML = `<div class='svc-pill' style='padding:6px; color:white; font-weight:bold;'>${escapeHtml(s.name)}</div><div class='small-muted'>${s.count}</div>`;
+        el.addEventListener('click', ()=> toggleFilter('service', s.name, el));
+        servicesListEl.appendChild(el);
+      }); }
+
+    function renderIPs(){
+      ipAccordion.innerHTML = '';
+      const q = (searchInput.value||'').trim().toLowerCase();
+      const keys = Object.keys(DATA.ips).sort();
+
+      keys.forEach((ip) => {
+        const e = DATA.ips[ip];
+
+        // apply active filter
+        if(ACTIVE_FILTER.type === 'port'){
+          const ok = e.ports.some(p => p.portKey === ACTIVE_FILTER.key && p.state === 'open'); if(!ok) return;
+        }
+        if(ACTIVE_FILTER.type === 'service'){
+          const ok = e.ports.some(p => p.svcKey === ACTIVE_FILTER.key && p.state === 'open'); if(!ok) return;
+        }
+
+        // apply search
+        if(q){ const match = ip.includes(q) || e.hostnames.join(' ').toLowerCase().includes(q) || e.ports.some(p => p.portKey.includes(q) || p.svcKey.toLowerCase().includes(q)); if(!match) return; }
+
+        const item = document.createElement('div'); item.className = 'accordion-item';
+
+        // Header: left (toggle) + right (actions)
+        const header = document.createElement('div'); header.className = 'accordion-header';
+        const left = document.createElement('div'); left.className = 'accordion-left';
+        const right = document.createElement('div'); right.className = 'accordion-right accordion-actions';
+
+        const toggleBtn = document.createElement('button'); toggleBtn.className = 'accordion-button'; toggleBtn.setAttribute('aria-expanded','false');
+        toggleBtn.innerHTML = `<div><strong>${escapeHtml(ip)}</strong>${ e.hostnames.length ? ' — ' + escapeHtml(e.hostnames.join(', ')) : '' }</div><div class='small-muted mono'>${e.ports.length} ports</div>`;
+        left.appendChild(toggleBtn);
+
+        // Actions on the right: copy + view raw
+        const copyBtn = document.createElement('button'); copyBtn.className = 'btn-ghost'; copyBtn.setAttribute('aria-label','Copy IP'); copyBtn.textContent = 'Copy IP';
+        const viewBtn = document.createElement('button'); viewBtn.className = 'btn-ghost'; viewBtn.setAttribute('aria-label','View raw'); viewBtn.textContent = 'View raw';
+        right.appendChild(copyBtn); right.appendChild(viewBtn);
+
+        header.appendChild(left); header.appendChild(right);
+
+        // Body with table
+        const body = document.createElement('div'); body.className = 'accordion-body';
+        const inner = document.createElement('div'); inner.className = 'body-inner';
+        const rows = e.ports.map(p => `<tr><td><span class='port-badge'>${p.portKey}</span></td><td class='small-muted'>${escapeHtml(p.state)}</td><td><a href='#' class='svc-link' data-svc='${encodeURIComponent(p.svcKey)}'>${escapeHtml(p.svc)}</a></td><td class='small-muted'>${escapeHtml(p.product)}</td><td class='small-muted'>${escapeHtml(p.version)}</td></tr>`).join('');
+        inner.innerHTML = `<table class='data-table' role='table'><thead><tr><th>Port</th><th>State</th><th>Service</th><th>Product</th><th>Version</th></tr></thead><tbody>${rows}</tbody></table>`;
+        body.appendChild(inner);
+
+        item.appendChild(header); item.appendChild(body); ipAccordion.appendChild(item);
+
+        // toggle animation: use max-height for smooth transition
+        toggleBtn.addEventListener('click', ()=>{
+          const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+          toggleBtn.setAttribute('aria-expanded', String(!expanded));
+          if(expanded){
+            body.style.maxHeight = '0';
+          } else {
+            // set to scrollHeight to animate open, then allow natural height
+            body.style.maxHeight = inner.scrollHeight + 24 + 'px';
+            // after transition, clear maxHeight to allow responsive content growth
+            setTimeout(()=>{ if(toggleBtn.getAttribute('aria-expanded') === 'true') body.style.maxHeight = inner.scrollHeight + 24 + 'px'; }, 300);
+          }
+        });
+
+        // Wire actions
+        copyBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); navigator.clipboard.writeText(ip).then(()=>{ toast('Copied '+ip); }); });
+        viewBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); openModal(ip, e.raw); });
+      });
+
+      // bind service links
+      Array.from(document.querySelectorAll('.svc-link')).forEach(a => a.addEventListener('click', ev=>{ ev.preventDefault(); const svc = decodeURIComponent(a.getAttribute('data-svc')); toggleFilter('service', svc); }));
+    }
+
+    // small toast
+    function toast(msg){ const t = document.createElement('div'); t.textContent = msg; t.style.position='fixed'; t.style.right='18px'; t.style.bottom='18px'; t.style.background='rgba(0,0,0,0.6)'; t.style.color='white'; t.style.padding='8px 12px'; t.style.border='1px solid var(--border)'; document.body.appendChild(t); setTimeout(()=> t.remove(),1800); }
+
+    function toggleFilter(type, key, el){ if(ACTIVE_FILTER.type===type && ACTIVE_FILTER.key===key){ ACTIVE_FILTER={type:null,key:null}; document.querySelectorAll('.list-item.active').forEach(x=>x.classList.remove('active')); renderIPs(); toast('Filter cleared'); return; } ACTIVE_FILTER={type,key}; document.querySelectorAll('.list-item').forEach(x=>x.classList.remove('active')); if(el) el.classList.add('active'); renderIPs(); toast('Filter: '+type+'='+key); }
+
+    function renderChart(){ const entries = Object.values(DATA.ports).sort((a,b)=> b.open - a.open).slice(0,10); const labels = entries.map(e=>e.portKey); const values = entries.map(e=>e.open); const ctx = document.getElementById('portsChart').getContext('2d'); portsChart = new Chart(ctx, {type:'bar',data:{labels, datasets:[{label:'Open count',data:values,backgroundColor: 'rgba(15,98,254,0.9)'}]}, options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color: getComputedStyle(document.documentElement).getPropertyValue('--text-02')||'#c6c6c6'}}, y:{ticks:{color: getComputedStyle(document.documentElement).getPropertyValue('--text-02')||'#c6c6c6'}}}, responsive:true}}); }
+
+    // export
+    exportJson.addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='nmap_aggregated.json'; a.click(); URL.revokeObjectURL(url); });
+
+    exportCsv.addEventListener('click', ()=>{
+      const rows = [['ip','port','proto','state','service','product','version']];
+      Object.values(DATA.ips).forEach(ip=> ip.ports.forEach(p=> rows.push([ip.ip,p.port,p.proto,p.state,p.svc,p.product,p.version])));
+        const csv = rows.map(r=> r.map(cell=> '"'+String(cell||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+        const blob = new Blob([csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'nmap_aggregated.csv'; a.click(); URL.revokeObjectURL(url);
+      });
+
+      // copy all ips
+      copyIPs.addEventListener('click', ()=>{ const ips = Object.keys(DATA.ips); navigator.clipboard.writeText(ips.join('\n')).then(()=> toast('Copied '+ips.length+' IPs')); });
+    // file handling
+    fileEl.addEventListener('change', (ev)=>{ const f = ev.target.files[0]; if(!f) return; const fr = new FileReader(); fr.onload = ()=> parseNmapXml(fr.result); fr.readAsText(f); });
+    document.querySelector('label.file-btn').addEventListener('click', ()=> fileEl.click());
+
+    // example sample
+    loadExample.addEventListener('click', ()=>{
+      const sample = `<?xml version="1.0"?>
+<nmaprun>
+  <host>
+    <status state=\"up\"/>
+    <address addr=\"192.0.2.10\" addrtype=\"ipv4\"/>
+    <hostnames><hostname name=\"web.example.test\"/></hostnames>
+    <ports>
+      <port protocol=\"tcp\" portid=\"80\"><state state=\"open\"/><service name=\"http\" product=\"nginx\" version=\"1.18.0\"/></port>
+      <port protocol=\"tcp\" portid=\"22\"><state state=\"open\"/><service name=\"ssh\" product=\"OpenSSH\" version=\"7.9\"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state=\"up\"/>
+    <address addr=\"198.51.100.5\" addrtype=\"ipv4\"/>
+    <hostnames><hostname name=\"db.example.test\"/></hostnames>
+    <ports>
+      <port protocol=\"tcp\" portid=\"5432\"><state state=\"open\"/><service name=\"postgresql\" product=\"PostgreSQL\" version=\"12.7\"/></port>
+      <port protocol=\"tcp\" portid=\"22\"><state state=\"open\"/><service name=\"ssh\" product=\"OpenSSH\" version=\"8.2\"/></port>
+    </ports>
+  </host>
+</nmaprun>`;
+      parseNmapXml(sample);
+    });
+
+    // search
+    searchInput.addEventListener('input', ()=> renderIPs());
+
+    // small keyboard shortcut: / to focus search
+    window.addEventListener('keydown', (e)=>{ if(e.key === '/') { e.preventDefault(); searchInput.focus(); } });
+
+    // expose for debugging
+    window.NMAP_ANALYZER = {parseNmapXml, DATA};
+
+    // finished
+  })();
+  </script>
+</body>
+</html>
