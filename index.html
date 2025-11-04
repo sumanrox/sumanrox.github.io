@@ -283,6 +283,10 @@
   html[data-theme="light"] #confirmClearBtn:focus{color:var(--text-01) !important}
   #confirmClearBtn svg{fill:currentColor}
     .export-option-btn svg{width:20px;height:20px}
+    .export-option-btn:focus-visible{outline:2px solid var(--interactive);outline-offset:2px}
+    @media (prefers-reduced-motion: reduce){
+      .count-up{animation:none}
+    }
 
   /* Cancel buttons should not switch to white text on light backgrounds */
   /* Cancel buttons: readable by default and on hover */
@@ -791,9 +795,9 @@ a {
     </div>
 
     <!-- Export Modal -->
-    <div class="export-modal" id="exportModal">
+    <div class="export-modal" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
       <div class="export-modal-content">
-        <h3>Export Data</h3>
+        <h3 id="exportModalTitle">Export Data</h3>
         <div class="export-options">
           <button class="export-option-btn" id="exportModalJson">
             <svg viewBox="0 0 16 16" fill="currentColor">
@@ -822,12 +826,12 @@ a {
   </div>
 
   <!-- Clear Data Confirmation Modal -->
-  <div class="export-modal" id="clearConfirmModal">
+  <div class="export-modal" id="clearConfirmModal" role="dialog" aria-modal="true" aria-labelledby="clearConfirmTitle">
     <div class="export-modal-content">
-      <h3>Clear All Data?</h3>
+      <h3 id="clearConfirmTitle">Clear All Data?</h3>
   <p style="margin:16px 0">This will remove all loaded scan data. This action cannot be undone.</p>
       <div class="export-options">
-        <button class="export-option-btn" id="confirmClearBtn" style="background:var(--support-error);color:white">
+  <button class="export-option-btn" id="confirmClearBtn">
           <svg viewBox="0 0 16 16" fill="currentColor">
             <path d="M11 2H5L4 3H1v2h14V3h-3l-1-1zM3 6v9c0 .55.45 1 1 1h8c.55 0 1-.45 1-1V6H3z"/>
           </svg>
@@ -841,7 +845,7 @@ a {
   </div>
 
   <!-- Modal for viewing raw XML -->
-  <div id="rawModal" class="modal-overlay">
+  <div id="rawModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modalTitle">Raw XML</h2>
@@ -986,8 +990,9 @@ a {
       8080: 'HTTP Proxy - Often misconfigured'
     };
 
-    // Helpers
-    const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+  // Helpers
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
 
     // Show/hide loading
     function showLoading(){ loadingOverlay.classList.add('active'); }
@@ -998,6 +1003,10 @@ a {
 
     // Count-up animation
     function animateCount(element, target){
+      if(prefersReducedMotion){
+        element.textContent = target;
+        return;
+      }
       element.classList.add('count-up');
       element.textContent = target;
       setTimeout(()=> element.classList.remove('count-up'), 400);
@@ -1360,6 +1369,7 @@ a {
           indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
+          animation: { duration: prefersReducedMotion ? 0 : 600 },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -1562,7 +1572,7 @@ a {
       const ctx = chartEl.getContext('2d');
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
       const textColor = isDark ? '#c6c6c6' : '#525252';
-      portsChart = new Chart(ctx, {type:'bar',data:{labels, datasets:[{label:'Open count',data:values,backgroundColor: 'rgba(15,98,254,0.9)'}]}, options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color: textColor}}, y:{ticks:{color: textColor}}}, responsive:true}}); 
+  portsChart = new Chart(ctx, {type:'bar',data:{labels, datasets:[{label:'Open count',data:values,backgroundColor: 'rgba(15,98,254,0.9)'}]}, options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color: textColor}}, y:{ticks:{color: textColor}}}, responsive:true, animation:{duration: prefersReducedMotion ? 0 : 600}}}); 
     }
 
     // Export handlers
@@ -1980,7 +1990,10 @@ a {
     if(dockClearData){
       dockClearData.addEventListener('click', ()=>{
         console.log('🖱️ Dock Clear Data clicked');
-        document.getElementById('clearConfirmModal').classList.add('active');
+        const m = document.getElementById('clearConfirmModal');
+        m.classList.add('active');
+        // Focus the non-destructive action by default
+        setTimeout(()=> document.getElementById('cancelClearBtn')?.focus(), 0);
       });
     }
     
@@ -1990,6 +2003,7 @@ a {
       dockExportData.addEventListener('click', ()=>{ 
         console.log('🖱️ Dock Export Data clicked, opening modal');
         exportModal.classList.add('active'); 
+        setTimeout(()=> document.getElementById('exportModalJson')?.focus(), 0);
       });
     }
     
