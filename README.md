@@ -16,6 +16,8 @@
 Designed with IBM’s **Carbon Design System**, it delivers a **sleek enterprise-grade UI** while remaining **completely portable** — no npm, no build steps, and no dependencies.
 
 Ideal for **VDP researchers, penetration testers, and network analysts**, this tool provides quick insights into hosts, open ports, and running services through an elegant interface.
+Currently Running on https://sumanrox.github.io/
+<img width="1368" height="872" alt="dashboard" src="https://github.com/user-attachments/assets/4eac68b9-19ae-49e1-a390-2935cb023bd6" />
 
 ---
 
@@ -67,13 +69,3 @@ Follow these simple steps to get started with the Nmap Data Viewer:
 5.  **Save Data:** Click "**Export JSON**" to download the entire parsed inventory as a JSON file.
 
 ---
-
-## 🧠 Roadmap
-
-Always looking to improve! Future plans for the tool include if the community asks:
-
-* 🔍 **Search & Filter:** Implement robust filtering by IP address, Port, or Service name.
-* ✅ **XML Validation:** Add checks to ensure the uploaded file is valid Nmap XML before parsing.
-* 💾 **Local Storage:** Use browser local storage to save previously loaded inventories.
-* 🌓 **Theme Toggle:** Introduce a Light/Dark theme switch for better viewing in different environments.
-* 📈 **Data Visualization:** Integrate graphs and charts for a visual overview of scan results (e.g., common ports, OS distribution).
