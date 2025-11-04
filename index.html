@@ -252,7 +252,12 @@
       max-width:400px;
       width:90%;
     }
-    .export-modal-content h3{margin:0 0 16px 0}
+  .export-modal-content h3{margin:0 0 16px 0}
+  /* Clear Data modal text color per theme */
+  html[data-theme="light"] #clearConfirmModal .export-modal-content h3,
+  html[data-theme="light"] #clearConfirmModal .export-modal-content p{color:var(--text-01)}
+  html:not([data-theme="light"]) #clearConfirmModal .export-modal-content h3,
+  html:not([data-theme="light"]) #clearConfirmModal .export-modal-content p{color:#ffffff}
     .export-options{display:flex;flex-direction:column;gap:8px}
     .export-option-btn{
       width:100%;
@@ -268,8 +273,22 @@
       gap:12px;
       font-size:14px;
     }
-    .export-option-btn:hover{background:var(--interactive);color:#ffffff;border-color:var(--interactive)}
+  .export-option-btn:hover{background:var(--interactive);color:#ffffff;border-color:var(--interactive)}
+  /* Ensure destructive confirm stays red and readable, not overridden by generic hover */
+  #confirmClearBtn{background:var(--support-error) !important;color:#ffffff !important;border-color:var(--support-error) !important}
+  #confirmClearBtn:hover,#confirmClearBtn:focus{background:var(--support-error) !important;color:#ffffff !important;border-color:#ba1b23 !important}
+  /* In LIGHT mode, the Clear Data option must use dark text (not white) */
+  html[data-theme="light"] #confirmClearBtn,
+  html[data-theme="light"] #confirmClearBtn:hover,
+  html[data-theme="light"] #confirmClearBtn:focus{color:var(--text-01) !important}
+  #confirmClearBtn svg{fill:currentColor}
     .export-option-btn svg{width:20px;height:20px}
+
+  /* Cancel buttons should not switch to white text on light backgrounds */
+  /* Cancel buttons: readable by default and on hover */
+  #cancelClearBtn, #cancelExportBtn{background:var(--layer);color:var(--text-01) !important;border:1px solid var(--border)}
+  #cancelClearBtn svg, #cancelExportBtn svg{fill:currentColor}
+  #cancelClearBtn:hover, #cancelExportBtn:hover{background:var(--layer-2);color:var(--text-01) !important;border-color:var(--interactive)}
 
     /* Responsive dock - icons only on mobile, icons+text on tablet/desktop */
     @media (max-width:640px){
@@ -374,8 +393,8 @@
     .tooltip:hover::after{opacity:1}
 
     /* Drag & Drop Zone */
-    .drop-zone{border:2px dashed var(--border);padding:40px;text-align:center;transition:all 200ms ease;cursor:pointer}
-    .drop-zone:hover,.drop-zone.drag-over{border-color:var(--interactive);background:rgba(15,98,254,0.05)}
+    .drop-zone{border:2px dashed var(--border);padding:40px;text-align:center;transition:all 200ms ease;cursor:pointer;background:rgba(15,98,254,0.03);border-radius:4px}
+    .drop-zone:hover,.drop-zone.drag-over{border-color:var(--interactive);background:rgba(15,98,254,0.08)}
     .drop-zone-icon{width:48px;height:48px;margin:0 auto 12px;opacity:0.4}
 
     /* File Info Banner */
@@ -794,7 +813,7 @@ a {
             </svg>
             Export as PDF
           </button>
-          <button class="export-option-btn" onclick="document.getElementById('exportModal').classList.remove('active')" style="background:var(--layer);margin-top:8px">
+          <button class="export-option-btn" id="cancelExportBtn" onclick="document.getElementById('exportModal').classList.remove('active')" style="background:var(--layer);margin-top:8px">
             Cancel
           </button>
         </div>
@@ -806,7 +825,7 @@ a {
   <div class="export-modal" id="clearConfirmModal">
     <div class="export-modal-content">
       <h3>Clear All Data?</h3>
-      <p style="margin:16px 0;color:var(--text-secondary)">This will remove all loaded scan data. This action cannot be undone.</p>
+  <p style="margin:16px 0">This will remove all loaded scan data. This action cannot be undone.</p>
       <div class="export-options">
         <button class="export-option-btn" id="confirmClearBtn" style="background:var(--support-error);color:white">
           <svg viewBox="0 0 16 16" fill="currentColor">
