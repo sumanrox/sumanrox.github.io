@@ -111,11 +111,11 @@
   .data-table thead th{color:#8d8d8d;background:var(--layer);font-weight:600;text-transform:uppercase;font-size:12px;letter-spacing:0.32px;position:sticky;top:0;z-index:10}
   .data-table td .port-badge{margin-right:10px;display:inline-block}
   /* Fixed column widths for consistency */
-  .data-table th:nth-child(1), .data-table td:nth-child(1){width:15%}
+  .data-table th:nth-child(1), .data-table td:nth-child(1){width:12%}
   .data-table th:nth-child(2), .data-table td:nth-child(2){width:12%}
   .data-table th:nth-child(3), .data-table td:nth-child(3){width:20%}
-  .data-table th:nth-child(4), .data-table td:nth-child(4){width:28%}
-  .data-table th:nth-child(5), .data-table td:nth-child(5){width:25%}
+  .data-table th:nth-child(4), .data-table td:nth-child(4){width:18%}
+  .data-table th:nth-child(5), .data-table td:nth-child(5){width:15%}
 
   /* Accordion actions (right side) */
   .accordion-header{display:flex;align-items:center;justify-content:space-between;padding:0}
@@ -674,6 +674,7 @@ a {
                   <th style="text-align:left">Port</th>
                   <th style="text-align:left">Protocol</th>
                   <th style="text-align:left">Service</th>
+                  <th style="text-align:right">Status</th>
                   <th style="text-align:right">Count</th>
                 </tr>
               </thead>
@@ -686,7 +687,7 @@ a {
         <section class="panel">
           <h3 style="margin:0 0 12px 0">Top Services</h3>
           <div id="servicesChart">
-            <canvas id="servicesChartCanvas" height="300"></canvas>
+            <canvas id="servicesChartCanvas" height="500"></canvas>
           </div>
         </section>
       </div>
@@ -1270,10 +1271,14 @@ a {
         const isVuln = VULNERABLE_PORTS[parseInt(p.port)] ? ' vulnerable' : '';
         // Get most common service for this port
         const serviceName = p.service || '-';
+        const isActive = p.open > 0;
+        const statusColor = isActive ? '#24a148' : '#da1e28';
+        const statusText = isActive ? 'Active' : 'Inactive';
         tr.innerHTML = `
           <td style="text-align:left"><span class="port-badge${isVuln}">${p.port}</span></td>
           <td style="text-align:left">${p.proto || 'tcp'}</td>
           <td style="text-align:left">${serviceName}</td>
+          <td style="text-align:right"><span style="display:inline-flex;align-items:center;gap:6px;justify-content:flex-end"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${statusColor}"></span>${statusText}</span></td>
           <td style="text-align:right">${p.open}</td>
         `;
         tr.style.cursor = 'pointer';
@@ -1323,7 +1328,9 @@ a {
             label: 'Service Count',
             data: values,
             backgroundColor: gradients,
-            borderWidth: 0
+            borderWidth: 0,
+            barPercentage: 0.9,
+            categoryPercentage: 0.9
           }]
         },
         options: {
@@ -1359,7 +1366,7 @@ a {
             y: {
               ticks: { 
                 color: textColor,
-                font: { size: 11, weight: '500' }
+                font: { size: 14, weight: '500' }
               },
               grid: { 
                 display: false
@@ -1774,30 +1781,132 @@ a {
   <host>
     <status state="up"/>
     <address addr="192.0.2.10" addrtype="ipv4"/>
-    <hostnames><hostname name="web.example.test"/></hostnames>
+    <hostnames><hostname name="web1.example.test"/></hostnames>
     <ports>
       <port protocol="tcp" portid="80"><state state="open"/><service name="http" product="nginx" version="1.18.0"/></port>
+      <port protocol="tcp" portid="443"><state state="open"/><service name="https" product="nginx" version="1.18.0"/></port>
       <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="7.9"/></port>
-      <port protocol="tcp" portid="3389"><state state="open"/><service name="ms-wbt-server" product="Microsoft RDP" version=""/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.11" addrtype="ipv4"/>
+    <hostnames><hostname name="web2.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="80"><state state="open"/><service name="http" product="Apache httpd" version="2.4.41"/></port>
+      <port protocol="tcp" portid="443"><state state="open"/><service name="https" product="Apache httpd" version="2.4.41"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.0"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.12" addrtype="ipv4"/>
+    <hostnames><hostname name="web3.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="80"><state state="open"/><service name="http" product="nginx" version="1.20.0"/></port>
+      <port protocol="tcp" portid="443"><state state="open"/><service name="https" product="nginx" version="1.20.0"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.2"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.13" addrtype="ipv4"/>
+    <hostnames><hostname name="app1.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="8080"><state state="open"/><service name="http" product="Apache Tomcat" version="9.0"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="7.9"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.14" addrtype="ipv4"/>
+    <hostnames><hostname name="app2.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="8080"><state state="open"/><service name="http" product="Apache Tomcat" version="8.5"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.1"/></port>
     </ports>
   </host>
   <host>
     <status state="up"/>
     <address addr="198.51.100.5" addrtype="ipv4"/>
-    <hostnames><hostname name="db.example.test"/></hostnames>
+    <hostnames><hostname name="db1.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="3306"><state state="open"/><service name="mysql" product="MySQL" version="8.0.26"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.2"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="198.51.100.6" addrtype="ipv4"/>
+    <hostnames><hostname name="db2.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="3306"><state state="open"/><service name="mysql" product="MySQL" version="8.0.27"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.2"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="198.51.100.7" addrtype="ipv4"/>
+    <hostnames><hostname name="db3.example.test"/></hostnames>
     <ports>
       <port protocol="tcp" portid="5432"><state state="open"/><service name="postgresql" product="PostgreSQL" version="12.7"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.3"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="198.51.100.8" addrtype="ipv4"/>
+    <hostnames><hostname name="cache1.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="6379"><state state="open"/><service name="redis" product="Redis" version="6.2.5"/></port>
       <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.2"/></port>
-      <port protocol="tcp" portid="21"><state state="open"/><service name="ftp" product="vsftpd" version="3.0.3"/></port>
     </ports>
   </host>
   <host>
     <status state="up"/>
     <address addr="203.0.113.42" addrtype="ipv4"/>
-    <hostnames></hostnames>
+    <hostnames><hostname name="file.example.test"/></hostnames>
     <ports>
       <port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds" product="Samba" version="4.13"/></port>
       <port protocol="tcp" portid="139"><state state="open"/><service name="netbios-ssn" product="Samba" version="4.13"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.0"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.50" addrtype="ipv4"/>
+    <hostnames><hostname name="mail.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="25"><state state="open"/><service name="smtp" product="Postfix" version="3.5.8"/></port>
+      <port protocol="tcp" portid="143"><state state="open"/><service name="imap" product="Dovecot" version="2.3.13"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.1"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="198.51.100.100" addrtype="ipv4"/>
+    <hostnames><hostname name="dns.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="53"><state state="open"/><service name="domain" product="BIND" version="9.16.15"/></port>
+      <port protocol="tcp" portid="22"><state state="open"/><service name="ssh" product="OpenSSH" version="8.4"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="203.0.113.77" addrtype="ipv4"/>
+    <hostnames><hostname name="vpn.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="1194"><state state="open"/><service name="openvpn" product="OpenVPN" version="2.5.3"/></port>
+      <port protocol="tcp" portid="443"><state state="open"/><service name="https" product="nginx" version="1.20.1"/></port>
+    </ports>
+  </host>
+  <host>
+    <status state="up"/>
+    <address addr="192.0.2.99" addrtype="ipv4"/>
+    <hostnames><hostname name="legacy.example.test"/></hostnames>
+    <ports>
+      <port protocol="tcp" portid="21"><state state="open"/><service name="ftp" product="vsftpd" version="3.0.3"/></port>
+      <port protocol="tcp" portid="23"><state state="open"/><service name="telnet" product="Linux telnetd"/></port>
     </ports>
   </host>
 </nmaprun>`;
